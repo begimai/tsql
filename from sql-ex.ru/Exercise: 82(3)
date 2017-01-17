@@ -1,0 +1,12 @@
+WITH CTE AS 
+(
+	SELECT ROW_NUMBER() OVER (ORDER BY code) AS RN, *
+	FROM PC
+)
+SELECT topRecord.code, AVG(below.price)
+FROM CTE AS topRecord
+INNER JOIN CTE AS below
+	ON below.RN between topRecord.RN AND topRecord.RN + 5
+GROUP BY 
+	topRecord.code
+HAVING COUNT(*) = 6
