@@ -1,0 +1,19 @@
+SELECT maker
+FROM Product
+WHERE 
+	maker NOT IN
+(
+SELECT maker
+FROM Product
+WHERE 
+	model IN
+(
+	SELECT model
+	FROM PRODUCT 
+	EXCEPT
+	SELECT model
+	FROM PC
+)
+	AND type = 'PC'
+)
+GROUP BY maker
