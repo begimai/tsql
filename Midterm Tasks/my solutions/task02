@@ -1,0 +1,82 @@
+WITH CTE 
+AS
+(
+	SELECT m, OrigNumber, DestNumber, SUM(d) AS sum
+	FROM
+	(
+		SELECT *, DATEDIFF(SECOND, CallStartDateTime, CallStopDateTime) AS d, DATEPART(MONTH, CallStartDateTime) AS m
+		FROM Calls
+		WHERE
+			isSuccessfull = 1
+	) AS t1
+	GROUP BY m, OrigNumber, DestNumber
+), 
+CTE2 
+AS
+(
+	SELECT OrigNumber, SubscriberID, TariffID, SUM(d) AS sum
+	FROM 
+	(
+		SELECT OrigNumber, m, DestNumber,sum, SubscriberID, p.TariffID, CAST(sum AS DECIMAL) / 60 * Rate AS d
+		FROM CTE
+		INNER JOIN PhoneNumbers AS p
+			ON CTE.OrigNumber = p.PhoneNumber
+		INNER JOIN TariffItems AS ti
+			ON CTE.DestNumber LIKE ti.Direction + '%' AND p.TariffID = ti.TariffID
+	) AS t
+	GROUP BY OrigNumber, SubscriberID, TariffID
+), 
+CTE3 
+AS
+(
+	SELECT OrigNumber, SubscriberID, TariffID, SUM(d) AS sum
+	FROM 
+	(
+		SELECT OrigNumber, m, DestNumber,sum, SubscriberID, ti.TariffID, CAST(sum AS DECIMAL) / 60 * Rate AS d
+		FROM CTE
+		INNER JOIN PhoneNumbers AS p
+			ON CTE.OrigNumber = p.PhoneNumber
+		INNER JOIN TariffItems AS ti
+			ON CTE.DestNumber LIKE ti.Direction + '%' AND p.TariffID != ti.TariffID
+	) AS t
+	GROUP BY OrigNumber, SubscriberID, TariffID
+) 
+SELECT name, OrigNumber, PlanName, sum
+FROM 
+(
+	SELECT t.OrigNumber, t.SubscriberID, t.TariffID,
+	CASE 
+	WHEN CTE2.sum > t.sum 
+	THEN CTE2.sum - t.sum
+	ELSE NULL
+	END AS sum
+	FROM CTE2
+	INNER JOIN
+	(     
+		 SELECT c2.OrigNumber, c2.SubscriberID,
+		 CASE 
+		 WHEN c2.sum < c3.sum 
+		 THEN c2.TariffID
+		 ELSE c3.TariffID
+		 END AS TariffID,
+		 CASE 
+		 WHEN c2.sum < c3.sum 
+		 THEN c2.sum
+		 ELSE c3.sum
+		 END AS sum
+		 FROM CTE3 AS c2
+		INNER JOIN CTE3 AS c3
+			ON c2.OrigNumber = c3.OrigNumber
+			AND c2.TariffID != c3.TariffID
+	) AS t
+		ON t.OrigNumber = CTE2.OrigNumber
+		AND t.TariffID != CTE2.TariffID
+) AS temp
+INNER JOIN Subscribers AS s
+	ON s.ID = temp.SubscriberID
+INNER JOIN Tariffs AS t
+	ON t.ID = temp.TariffID
+WHERE 
+	sum IS NOT NULL
+GROUP BY OrigNumber, PlanName, sum, name
+
