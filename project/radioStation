@@ -1,0 +1,317 @@
+CREATE DATABASE RadioStation
+GO
+USE RadioStation
+GO
+CREATE TABLE Genres 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	Name NVARCHAR(100) NOT NULL
+)
+GO
+CREATE TABLE Types 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	Name VARCHAR(50) NOT NULL
+)
+GO
+CREATE TABLE Albums 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	Name NVARCHAR(100) NOT NULL,
+	Description VARCHAR(500) NOT NULL,
+	DateOfCreation DATE NOT NULL
+)
+GO
+CREATE TABLE Listeners 
+(
+	ID INT IDENTITY(1,1) NOT NULL, 
+	PhoneNumber VARCHAR(20) NOT NULL PRIMARY KEY CLUSTERED
+)
+GO
+CREATE TABLE DJs 
+(
+	ID INT IDENTITY(1,1) NOT NULL	PRIMARY KEY CLUSTERED,
+	Name NVARCHAR(100) NOT NULL,
+	BeginOfCareer DATE NULL
+)
+GO
+CREATE TABLE Coefficients 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	Value	DECIMAL(10, 2) NOT NULL
+)
+GO
+CREATE TABLE SMSs 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	PhoneID VARCHAR(20) NOT NULL FOREIGN KEY REFERENCES Listeners(PhoneNumber),  
+	Message	NVARCHAR(200) NOT NULL,
+	TimeReceived DATE NOT NULL,
+	TypeID INT NOT NULL FOREIGN KEY REFERENCES Type(ID),
+	CoefficientID	INT NULL FOREIGN KEY REFERENCES Coefficients(ID)
+)
+GO
+CREATE TABLE Programs 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	Name NVARCHAR(100) NOT NULL,
+	Duration INT NOT NULL
+)
+GO
+CREATE TABLE Groups 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED, 
+	Name VARCHAR(50) NOT NULL
+)
+GO
+CREATE TABLE Singers 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	Name NVARCHAR(100) NOT NULL,
+	GroupID	INT NULL FOREIGN KEY REFERENCES Groups(ID)
+)
+GO
+CREATE TABLE Songs 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY clustered,
+	Name NVARCHAR(100) NOT NULL,
+	Duration INT NOT NULL,
+	dateOfCreation DATE NOT NULL,
+	OriginalSongID INT NULL FOREIGN KEY REFERENCES Songs(ID)
+)
+GO
+CREATE TABLE GenreSong
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	GenreID INT NOT NULL FOREIGN KEY REFERENCES Genres(ID),
+	SongID INT NOT NULL FOREIGN KEY REFERENCES Songs(ID)
+)
+GO
+CREATE TABLE SingerSongs
+(
+	SingerID INT NOT NULL FOREIGN KEY REFERENCES Singers(ID),
+	SongID INT NOT NULL FOREIGN KEY REFERENCES Songs(ID)
+)
+GO
+CREATE TABLE AlbumSong
+(
+	SongID INT NOT NULL FOREIGN KEY REFERENCES Songs(ID),
+	AlbumID INT NULL FOREIGN KEY REFERENCES Albums(ID)
+)
+GO
+CREATE TABLE ProgramSchedules 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	ProgramID INT NOT NULL FOREIGN KEY REFERENCES Programs(ID),
+	StartTimeProgram DATE NOT NULL,
+	EndTimeProgram DATE NOT NULL,
+	CoefficientID	INT NOT NULL FOREIGN KEY REFERENCES Coefficients(ID)
+)
+GO
+CREATE TABLE DJs_Schedules 
+(
+	Dj_Id INT NOT NULL FOREIGN KEY REFERENCES DJs(ID),
+	ProgramScheduleID INT NOT NULL FOREIGN KEY REFERENCES ProgramSchedules(ID)
+)
+GO
+CREATE TABLE RateFake 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	Value INT NOT NULL
+)
+GO
+CREATE TABLE Orders 
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	PhoneID VARCHAR(20) NOT NULL FOREIGN KEY REFERENCES Listeners(PhoneNumber),
+	Amount INT NOT NULL, 
+	SongID INT NOT NULL FOREIGN KEY REFERENCES Songs(ID),
+	RateID INT NOT NULL FOREIGN KEY REFERENCES RateFake(ID),
+	DateOfOrder DATE NOT NULL
+)
+GO
+CREATE TABLE Votes
+(
+	ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY CLUSTERED,
+	SongID INT NOT NULL FOREIGN KEY REFERENCES Songs(ID),
+	Like_Dislike BIT NOT NULL
+)
+GO
+CREATE TABLE PhoneCalls 
+(
+	PhoneID VARCHAR(20) NOT NULL FOREIGN KEY REFERENCES Listeners(PhoneNumber),
+	CallStart DATE NOT NULL,
+	CallEnd DATE NOT NULL,
+	VoteID INT NULL FOREIGN KEY REFERENCES Votes(ID),						
+	TypeID INT NULL FOREIGN KEY REFERENCES Type(ID)
+)
+GO
+/*
+	Albums - description of album. Field DateOfCreation - when the album was created. 
+			Example of albums: Remix, Classic ....
+	
+	Listeners info about people - radio users.
+	
+	SMSs - sms. Field Message - stores content of the message. TypeID defines message 
+			request(music to search, to get info about music) or vote.
+
+	Types of sms -  is a table where we define what kind of sms we have and how 
+			much money from what type we will have
+	
+	Coefficients stores information about rate. During program times coefficiency for vote 
+			is considered different from times when there is no program. Ex during 
+			program-10.0 for 1 sms; no program - 5 for 1 sms.
+	
+	Programs - what program runs and by what DJ and what is duration of a program in order to 
+			be able to fit it in schedule and 
+			know whether the sms or call was made during program.
+
+	Songs - information about songs. Name - name of the song. SingerID - 
+			singer who sings current music. Description - information about music
+			and duration, the same principle used like in programs.
+	
+	SongSchedules - information on what time which music plays. StartOfSong -
+			when the music starts playing during the program and EndOfSong when
+			the music stops playing. (here comes usage of a durations)
+
+	PhoneCalls - information about calls. On what time which user calls to book the music.
+
+	Orders - This table gives the information about orders made by a 
+			listener to promote certain song, amount of money defines the rate that we should use 
+			to increase by fake votes the rating. Rate values give us the percentage 
+			which will we use to calculate how many fake votes we will add given the amount of money
+*/
+
+CREATE VIEW VW_RateFake
+AS
+SELECT [Value] FROM RateFake
+GO
+BULK INSERT VW_RateFake FROM 'D:\Dabatase Principles\GroupWork\Ratefake.txt'
+WITH(FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Programs_Schedules
+AS
+SELECT [ProgramID], [StartTimeProgram], [EndTimeProgram], [CoefficientID] FROM ProgramSchedules
+GO
+BULK INSERT VW_Programs_Schedules FROM 'D:\Dabatase Principles\GroupWork\ProgramSchedules.txt'
+WITH(KEEPIDENTITY, FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Albums
+AS
+SELECT Name, Description, DateOfCreation FROM Albums
+GO
+BULK INSERT VW_Albums FROM 'D:\Dabatase Principles\GroupWork\Albums.txt'
+WITH(KEEPIDENTITY, FIRSTROW = 2, FIELDTERMINATOR = ';', ROWTERMINATOR = '\n', Lastrow = 31 )
+GO
+CREATE VIEW VW_Genre
+AS
+SELECT [Name] FROM Genres
+GO
+BULK INSERT VW_Genre  FROM 'D:\Dabatase Principles\GroupWork\genres.txt'
+WITH(FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Type
+AS
+SELECT [Name] FROM Type
+GO
+BULK INSERT VW_Type  FROM 'D:\Dabatase Principles\GroupWork\Types.txt'
+WITH(FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Listener
+AS
+SELECT [PhoneNumber] FROM Listeners
+GO
+BULK INSERT VW_Listener  FROM 'D:\Dabatase Principles\GroupWork\Listeners.txt'
+WITH(FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_DJ
+AS
+SELECT [Name], [BeginOfCareer] FROM DJs
+GO
+BULK INSERT VW_DJ  FROM 'D:\Dabatase Principles\GroupWork\DJ.txt'
+WITH(FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Programs
+AS
+SELECT [Name], [Duration] FROM Programs
+GO
+BULK INSERT VW_Programs FROM 'D:\Dabatase Principles\GroupWork\Programs.txt'
+WITH(FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_PhoneCalls
+AS
+SELECT [PhoneID], [CallStart], [CallEnd], [VoteID], [TypeID] FROM PhoneCalls
+GO
+BULK INSERT VW_PhoneCalls FROM 'D:\Dabatase Principles\GroupWork\PhoneCalls.txt'
+WITH(KEEPIDENTITY, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n', KEEPNULLS)
+GO
+CREATE VIEW VW_Votes
+AS
+SELECT [SongID], [Like_Dislike] FROM Votes
+GO
+BULK INSERT VW_Votes FROM 'D:\Dabatase Principles\GroupWork\Votes.txt'
+WITH(KEEPIDENTITY, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Coefficiency
+AS
+SELECT Value FROM Coefficients
+GO
+BULK INSERT VW_Coefficiency FROM 'D:\Dabatase Principles\GroupWork\coefficients.txt'
+WITH(FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Sms
+AS
+SELECT PhoneID, Message, TimeReceived, TypeID, CoefficientID FROM Smss
+GO
+BULK INSERT VW_Sms FROM 'D:\Dabatase Principles\GroupWork\sms.txt'
+WITH(FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_DJ_Schedule
+AS
+SELECT Dj_Id, ProgramScheduleID FROM DJs_Schedules
+GO
+BULK INSERT VW_DJ_Schedule FROM 'D:\Dabatase Principles\GroupWork\DJs_Schedules.txt'
+WITH(FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_DJ_Singers
+AS
+SELECT Name, GroupID FROM Singers
+GO
+BULK INSERT VW_DJ_Singers FROM 'D:\Dabatase Principles\GroupWork\singers.txt'
+WITH(FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Groups
+AS
+SELECT Name FROM Groups
+GO
+BULK INSERT VW_Groups FROM 'D:\Dabatase Principles\GroupWork\Groups.txt'
+WITH(FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_AlbumSong
+AS
+SELECT SongID, AlbumID FROM AlbumSong
+GO
+BULK INSERT VW_AlbumSong FROM 'D:\Dabatase Principles\GroupWork\albums-songs.txt'
+WITH(KEEPIDENTITY, FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Songs
+AS
+SELECT Name, Duration, dateOfCreation, OriginalSongID FROM Songs
+GO
+BULK INSERT VW_Songs FROM 'D:\Dabatase Principles\GroupWork\Songs.txt'
+WITH(KEEPIDENTITY, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_Orders
+AS
+SELECT PhoneID, Amount, SongID, RateID, DateOfOrder FROM Orders
+GO
+BULK INSERT VW_Orders FROM 'D:\Dabatase Principles\GroupWork\Orders.txt'
+WITH(KEEPIDENTITY, FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
+CREATE VIEW VW_GenreSong
+AS
+SELECT GenreID, SongID FROM GenreSong
+GO
+BULK INSERT VW_GenreSong FROM 'D:\Dabatase Principles\GroupWork\GenreSong.txt'
+WITH(KEEPIDENTITY, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
+GO
