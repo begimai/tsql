@@ -1,0 +1,11 @@
+
+1.  Find Subsribers who spends the most for every month 
+ Output: Subscriber, Month, Spent amount
+
+2.  Suggest the most advantageous tariff for every Subscriber and his sim-cards and show the benefit, based on his calls.
+ Do not output Subscribers/sim-cards which are already on the best tariffs.
+ Output: Subscriber, PhoneNumber, TariffName, Benefit
+
+3. Find unsuccessfull calls, after which subscriber calls again the same number (even from the other sim-card).
+ Output: Subscriber, PhoneNumber, Time between attemps in minutes
+
