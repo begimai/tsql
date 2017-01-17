@@ -1,0 +1,26 @@
+SELECT name, t
+FROM Company AS c
+INNER JOIN 
+(
+	SELECT id_comp, SUM(
+	CASE 
+	WHEN DATEPART(HOUR, time_in) - DATEPART(HOUR, time_out) < 0
+	THEN 24 + DATEPART(HOUR, time_in) - DATEPART(HOUR, time_out)
+	ELSE DATEPART(HOUR, time_in) - DATEPART(HOUR, time_out)
+	END * 60 +
+	CASE 
+	WHEN DATEPART(MINUTE, time_in) - DATEPART(MINUTE, time_out) < 0
+	THEN -60 + (60 + DATEPART(MINUTE, time_in) - DATEPART(MINUTE, time_out)) 
+	ELSE DATEPART(MINUTE, time_in) - DATEPART(MINUTE, time_out)
+	END) AS t
+	FROM Trip AS t
+	INNER JOIN
+	(
+		SELECT trip_no
+		FROM Pass_in_trip
+		GROUP BY trip_no, date
+	) AS ID
+		ON t.trip_no = ID.trip_no
+	GROUP BY ID_comp
+) AS t
+ON t.ID_comp = c.ID_comp
