@@ -1,0 +1,69 @@
+WITH CTE3
+AS
+(
+	SELECT name, COUNT(*) AS diff_psngrs
+	FROM
+	(
+
+		SELECT name,  ID_psg, COUNT(*) AS s
+		FROM Trip AS t
+		INNER JOIN Pass_in_trip AS p
+			ON p.trip_no = t.trip_no
+		INNER JOIN Company AS c
+			ON c.ID_comp = t.ID_comp
+		GROUP BY name,  ID_psg
+	) AS t
+	GROUP BY name
+),
+CTE2
+AS
+(
+	SELECT name, COUNT(*) AS planes
+	FROM
+	(
+		SELECT name,  plane, COUNT(*) AS s
+		FROM Trip AS t
+		INNER JOIN Pass_in_trip AS p
+			ON p.trip_no = t.trip_no
+		INNER JOIN Company AS c
+			ON c.ID_comp = t.ID_comp
+		GROUP BY name,  plane
+	) AS t
+	GROUP BY name
+),
+CTE1
+AS
+(
+	SELECT name, COUNT(*) AS flights
+	FROM
+	(
+		SELECT name, date, town_from, COUNT(*) AS s
+		FROM Trip AS t
+		INNER JOIN Pass_in_trip AS p
+			ON p.trip_no = t.trip_no
+		INNER JOIN Company AS c
+			ON c.ID_comp = t.ID_comp
+		GROUP BY name, date, town_from, t.trip_no
+	) AS t
+	GROUP BY name
+),
+CTE4
+AS
+(
+	SELECT name, COUNT(*) AS total_psngrs
+	FROM Trip AS t
+	INNER JOIN Pass_in_trip AS p
+		ON p.trip_no = t.trip_no
+	INNER JOIN Company AS c
+		ON c.ID_comp = t.ID_comp
+	GROUP BY name
+)
+
+SELECT CTE1.name, CTE1.flights, CTE2.planes, CTE3.diff_psngrs, CTE4.total_psngrs
+FROM CTE1
+INNER JOIN CTE2
+	ON CTE1.name = CTE2.name
+INNER JOIN CTE3
+	ON CTE2.name = CTE3.name
+INNER JOIN CTE4
+	ON CTE3.name = CTE4.name
