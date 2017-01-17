@@ -1,0 +1,13 @@
+SELECT COUNT(maker)
+FROM
+(
+	SELECT maker, COUNT(*) AS s
+	FROM
+	(
+		SELECT model, maker
+		FROM Product
+		GROUP BY model, maker
+	) AS t
+	GROUP BY maker
+	HAVING COUNT(*) = 1
+) AS temp
