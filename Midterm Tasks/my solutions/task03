@@ -1,0 +1,26 @@
+WITH CTE
+AS
+(
+	SELECT OrigNumber, DestNumber, CallStartDateTime, CallStopDateTime, IsSuccessfull, SubscriberID
+	FROM Calls AS c
+	INNER JOIN 
+	(
+		SELECT *
+		FROM PhoneNumbers
+	) AS n
+		ON c.OrigNumber = n.PhoneNumber
+)
+SELECT *
+FROM
+(
+	SELECT c1.OrigNumber, c1.DestNumber, DATEPART(MINUTE, c2.CallStartDateTime) - DATEPART(MINUTE, c1.CallStartDateTime) AS d, ROW_NUMBER() OVER (PARTITION BY c2.DestNumber ORDER BY c2.CallStartDateTime) AS n
+	FROM CTE AS c1
+	INNER JOIN CTE AS c2
+		ON c1.SubscriberID = c2.SubscriberID
+	WHERE 
+		c1.isSuccessfull = 0
+		AND c1.DestNumber = c2.DestNumber
+		AND c1.CallStartDateTime < c2.CallStartDateTime
+) AS t
+WHERE
+	n = 1
