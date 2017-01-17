@@ -1,0 +1,37 @@
+WITH CTE1
+AS 
+(
+	SELECT SubscriberID, m, SUM(d) AS d 
+	FROM 
+	(
+		SELECT p.subscriberID, c.destNumber, DATEPART(MONTH, c.callstartdatetime) AS m, 
+				DATEDIFF(SECOND, c.Callstartdatetime, c.CallStopDateTime) * 1.0 * ti.rate / 60 AS d 
+		FROM Calls AS c 
+		INNER JOIN PhoneNumbers AS p 
+			ON c.OrigNumber = p.PhoneNumber
+		INNER JOIN TariffItems AS ti 
+			ON c.DestNumber LIKE ti.Direction + '%' 
+			AND p.TariffID = ti.TariffID 
+		WHERE 
+			IsSuccessfull IS NOT NULL
+	) AS t 
+	GROUP BY  m, SubscriberID
+),
+CTE2 
+AS 
+(
+	SELECT SubscriberID, m, d 
+	FROM CTE1 AS c
+	WHERE 
+		d = 
+		(
+			SELECT MAX(d) 
+			FROM CTE1 
+			WHERE 
+				c.m = CTE1.m
+		)
+)
+SELECT name, m, d 
+FROM Subscribers AS s
+INNER JOIN CTE2 
+	ON CTE2.subscriberID = s.ID
